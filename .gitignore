@@ -1,0 +1,13 @@
+./env
+/env/*
+!.env/example.env
+.DS_Store
+node_modules
+dist
+/build`
+.vscode
+.idea
+*.log
+*.tmp
+    *.bak
+    `
