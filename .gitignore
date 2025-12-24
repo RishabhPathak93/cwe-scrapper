@@ -11,3 +11,10 @@ dist
 *.tmp
     *.bak
     `
+
+/scrp
+./scrp/*
+!/scrp/example.scrp
+!.scrp/readme.md
+!.scrp/config/
+!.scrp/scripts/

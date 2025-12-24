@@ -1,0 +1,109 @@
+trigger:
+  branches:
+    include:
+      - main
+      - master
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  SCAN_STATE_FILE: ".codesense_state"
+
+steps:
+  - checkout: self
+    fetchDepth: 0
+
+  # Step 1: Detect first scan or incremental scan
+  - script: |
+      if [ ! -f "$(SCAN_STATE_FILE)" ]; then
+        echo "FULL_SCAN=true" >> scan.env
+      else
+        echo "FULL_SCAN=false" >> scan.env
+      fi
+    displayName: "Detect scan type"
+
+  - script: |
+      source scan.env
+      if [ "$FULL_SCAN" = "true" ]; then
+        echo "Running FULL scan"
+      else
+        echo "Running INCREMENTAL scan"
+      fi
+    displayName: "Log scan mode"
+
+  # Step 2: Identify changed files (incremental)
+  - script: |
+      source scan.env
+
+      if [ "$FULL_SCAN" = "false" ]; then
+        LAST_COMMIT=$(cat $(SCAN_STATE_FILE))
+        git diff --name-only $LAST_COMMIT HEAD > changed_files.txt
+        cat changed_files.txt
+      fi
+    displayName: "Detect changed files"
+
+  # Step 3: Run CodeSense Scanner
+  - script: |
+      source scan.env
+
+      if [ "$FULL_SCAN" = "true" ]; then
+        echo "codesense scan --mode full --path ."
+      else
+        echo "codesense scan --mode incremental --files changed_files.txt"
+      fi
+    displayName: "Run CodeSense Scan"
+
+  # Step 4: Update last scanned commit
+  - script: |
+      git rev-parse HEAD > $(SCAN_STATE_FILE)
+    displayName: "Update scan state"
+
+  # Step 5: Persist scan state
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: $(SCAN_STATE_FILE)
+      ArtifactName: codesense-state
+
+
+
+
+# old one is heres
+
+
+trigger:
+  branches:
+    include:
+      - main
+      - master
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - checkout: self
+    fetchDepth: 0   # IMPORTANT: needed to track commit history
+
+  - script: |
+      echo "Latest commit:"
+      git log -1
+
+      echo "Changed files:"
+      git diff --name-only HEAD~1 HEAD || echo "First commit"
+    displayName: "Track commit & changes"
+
+  - script: |
+      mkdir output
+      zip -r output/repo-$(Build.BuildId).zip .
+    displayName: "Zip repository"
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: output
+      ArtifactName: repo-zip
+      publishLocation: Container
+
+
+
+
+      
