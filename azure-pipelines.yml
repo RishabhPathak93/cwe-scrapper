@@ -1,0 +1,57 @@
+trigger:
+  branches:
+    include:
+      - main
+      - master
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+# 1️⃣ Checkout repo with full history
+- checkout: self
+  fetchDepth: 0
+
+# 2️⃣ Show Azure DevOps commit metadata
+- script: |
+    echo "Branch           : $(Build.SourceBranch)"
+    echo "Commit SHA       : $(Build.SourceVersion)"
+    echo "Commit Message   : $(Build.SourceVersionMessage)"
+  displayName: "Commit metadata"
+
+# 3️⃣ Detect changed files
+- script: |
+    echo "Detecting changed files..."
+
+    if git rev-parse HEAD~1 >/dev/null 2>&1; then
+      git diff --name-only HEAD~1 HEAD > changed_files.txt
+    else
+      echo "First commit detected"
+      git ls-files > changed_files.txt
+    fi
+
+    echo "Changed files:"
+    cat changed_files.txt
+  displayName: "Detect file changes"
+
+# 4️⃣ Zip only changed files
+- script: |
+    mkdir -p output/changed
+
+    if [ -s changed_files.txt ]; then
+      while read file; do
+        mkdir -p "output/changed/$(dirname "$file")"
+        cp "$file" "output/changed/$file"
+      done < changed_files.txt
+    fi
+
+    cd output/changed
+    zip -r ../changed-files-$(Build.BuildId).zip .
+  displayName: "Zip changed files only"
+
+# 5️⃣ Publish artifact
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: output
+    ArtifactName: changed-files
+    publishLocation: Container
