@@ -65,4 +65,6 @@ with open(CSV_FILE, "w", newline="", encoding="utf-8") as f:
         print(f"✅ Saved CWE-{cwe_id}")
         time.sleep(1)
  
+ #nothing as such for now
+ 
  
